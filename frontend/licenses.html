@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>오픈소스 라이선스 · PyMu PDF 변환기</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>오픈소스 라이선스</h1>
+    <p class="sub">이 서비스가 사용하는 오픈소스 구성요소와 라이선스 표기입니다.</p>
+  </header>
+
+  <main>
+    <section class="license-block">
+      <h2>이 프로젝트의 라이선스</h2>
+      <p>
+        이 서비스는 <strong>GNU Affero General Public License v3.0 (AGPL-3.0)</strong>
+        으로 배포됩니다. 네트워크를 통해 본 서비스와 상호작용하는 사용자는 AGPL의
+        조건에 따라 전체 소스코드를 받을 권리를 가집니다.
+      </p>
+      <ul>
+        <li>라이선스 전문: <a href="https://www.gnu.org/licenses/agpl-3.0.txt" target="_blank" rel="noopener">www.gnu.org/licenses/agpl-3.0.txt</a></li>
+        <li>소스 코드: <a id="source-link" href="#" target="_blank" rel="noopener">&lt;REPLACE_WITH_REPO_URL&gt;</a></li>
+      </ul>
+    </section>
+
+    <section class="license-block">
+      <h2>Python 의존성</h2>
+      <table class="license-table">
+        <thead>
+          <tr><th>구성요소</th><th>라이선스</th><th>프로젝트</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>PyMuPDF</td>
+            <td>AGPL-3.0 또는 상용</td>
+            <td><a href="https://github.com/pymupdf/PyMuPDF" target="_blank" rel="noopener">github.com/pymupdf/PyMuPDF</a></td>
+          </tr>
+          <tr>
+            <td>PaddleOCR</td>
+            <td>Apache-2.0</td>
+            <td><a href="https://github.com/PaddlePaddle/PaddleOCR" target="_blank" rel="noopener">github.com/PaddlePaddle/PaddleOCR</a></td>
+          </tr>
+          <tr>
+            <td>PaddlePaddle</td>
+            <td>Apache-2.0</td>
+            <td><a href="https://github.com/PaddlePaddle/Paddle" target="_blank" rel="noopener">github.com/PaddlePaddle/Paddle</a></td>
+          </tr>
+          <tr>
+            <td>FastAPI</td>
+            <td>MIT</td>
+            <td><a href="https://github.com/tiangolo/fastapi" target="_blank" rel="noopener">github.com/tiangolo/fastapi</a></td>
+          </tr>
+          <tr>
+            <td>Starlette</td>
+            <td>BSD-3-Clause</td>
+            <td><a href="https://github.com/encode/starlette" target="_blank" rel="noopener">github.com/encode/starlette</a></td>
+          </tr>
+          <tr>
+            <td>Uvicorn</td>
+            <td>BSD-3-Clause</td>
+            <td><a href="https://github.com/encode/uvicorn" target="_blank" rel="noopener">github.com/encode/uvicorn</a></td>
+          </tr>
+          <tr>
+            <td>python-multipart</td>
+            <td>Apache-2.0</td>
+            <td><a href="https://github.com/Kludex/python-multipart" target="_blank" rel="noopener">github.com/Kludex/python-multipart</a></td>
+          </tr>
+          <tr>
+            <td>Pillow</td>
+            <td>MIT-CMU (HPND)</td>
+            <td><a href="https://github.com/python-pillow/Pillow" target="_blank" rel="noopener">github.com/python-pillow/Pillow</a></td>
+          </tr>
+          <tr>
+            <td>NumPy</td>
+            <td>BSD-3-Clause</td>
+            <td><a href="https://github.com/numpy/numpy" target="_blank" rel="noopener">github.com/numpy/numpy</a></td>
+          </tr>
+          <tr>
+            <td>Pydantic</td>
+            <td>MIT</td>
+            <td><a href="https://github.com/pydantic/pydantic" target="_blank" rel="noopener">github.com/pydantic/pydantic</a></td>
+          </tr>
+          <tr>
+            <td>setuptools</td>
+            <td>MIT</td>
+            <td><a href="https://github.com/pypa/setuptools" target="_blank" rel="noopener">github.com/pypa/setuptools</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="license-block">
+      <h2>프론트엔드</h2>
+      <table class="license-table">
+        <thead><tr><th>구성요소</th><th>라이선스</th><th>프로젝트</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>SortableJS (CDN)</td>
+            <td>MIT</td>
+            <td><a href="https://github.com/SortableJS/Sortable" target="_blank" rel="noopener">github.com/SortableJS/Sortable</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="license-block">
+      <h2>외부 런타임 도구</h2>
+      <p class="hint">서버에 별도로 설치되어 subprocess로 호출되는 도구. 이 프로젝트와 함께 재배포되지 않습니다.</p>
+      <table class="license-table">
+        <thead><tr><th>구성요소</th><th>라이선스</th><th>프로젝트</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>LibreOffice (soffice)</td>
+            <td>MPL-2.0</td>
+            <td><a href="https://www.libreoffice.org" target="_blank" rel="noopener">libreoffice.org</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="license-block">
+      <h2>모델</h2>
+      <p>OCR에 PaddleOCR의 한국어/영어 인식 모델 가중치(첫 실행 시 자동 다운로드)를 사용합니다. 모델 가중치는 PaddleOCR과 동일한 Apache-2.0 라이선스의 적용을 받습니다.</p>
+    </section>
+
+    <p class="back"><a href="/">← 메인으로</a></p>
+  </main>
+
+  <script>
+    fetch("/api/info").then(function (r) { return r.json(); }).then(function (info) {
+      var a = document.getElementById("source-link");
+      if (!a) return;
+      if (info.source_url) {
+        a.href = info.source_url;
+        a.textContent = info.source_url;
+      } else {
+        a.removeAttribute("href");
+        a.textContent = "(아직 설정되지 않음 — 서버 환경변수 PYMU_SOURCE_URL 설정 필요)";
+        a.style.cursor = "not-allowed";
+        a.style.opacity = "0.7";
+      }
+    }).catch(function () { /* non-fatal */ });
+  </script>
+</body>
+</html>

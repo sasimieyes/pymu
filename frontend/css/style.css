@@ -1,0 +1,372 @@
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --border: #e3e6ea;
+  --text: #1f2328;
+  --muted: #656d76;
+  --accent: #2b6cb0;
+  --accent-hover: #2354a0;
+  --danger: #c53030;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+               "Noto Sans KR", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+header {
+  padding: 32px 24px 16px;
+  text-align: center;
+}
+header h1 { margin: 0 0 4px; font-size: 28px; }
+header .sub { margin: 0; color: var(--muted); font-size: 14px; }
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 16px 24px 64px;
+}
+
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 40px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.dropzone:hover, .dropzone.drag-over {
+  border-color: var(--accent);
+  background: #eef4fb;
+}
+.dropzone p { margin: 4px 0; }
+.dropzone .hint { color: var(--muted); font-size: 13px; }
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.file-list:empty { display: none; }
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  cursor: grab;
+}
+.file-item.sortable-ghost { opacity: .5; }
+.file-item.sortable-chosen { cursor: grabbing; }
+
+.file-item .handle {
+  color: var(--muted);
+  font-size: 18px;
+  user-select: none;
+}
+.file-item .thumb {
+  flex-shrink: 0;
+  width: 48px;
+  height: 62px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--muted);
+  transition: transform 0.2s ease-out;
+  transform-origin: center center;
+}
+.file-item .thumb-placeholder {
+  background: #f9fafc;
+}
+.file-item .info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.file-item .info .name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+.file-item .info .meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+.file-item .merge-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.file-item .merge-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.file-item .name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+.file-item .meta { color: var(--muted); font-size: 12px; }
+
+.rotate-btn, .remove-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.rotate-btn:hover { border-color: var(--accent); color: var(--accent); }
+.remove-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+.options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.primary:hover:not(:disabled) { background: var(--accent-hover); }
+.primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.filename {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.status {
+  margin-top: 16px;
+  font-size: 14px;
+  min-height: 1.5em;
+}
+.status.error { color: var(--danger); }
+.status.busy { color: var(--accent); }
+.status.ok { color: #2f7d32; }
+
+.status .loader-bar {
+  display: block;
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 4px;
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.status .loader-bar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: loader-slide 1.2s ease-in-out infinite;
+}
+@keyframes loader-slide {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+
+/* determinate 모드 — width 기반 진행률 표시. 인디터미닛 슬라이드 대신
+   left: 0 부터 --progress 까지 채운다. */
+.status .loader-bar.determinate::before {
+  left: 0;
+  width: var(--progress, 0%);
+  animation: none;
+  transition: width 0.3s ease-out;
+}
+
+/* OCR 토글 꺼졌을 때 LLM 라벨을 회색 처리 */
+.checkbox.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.site-footer {
+  margin: 48px auto 32px;
+  max-width: 880px;
+  padding: 16px 24px 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.site-footer a { color: var(--muted); text-decoration: underline; }
+.site-footer a:hover { color: var(--accent); }
+.site-footer .sep { margin: 0 8px; opacity: .6; }
+
+.license-block {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.license-block h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.license-block .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+
+.license-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.license-table th, .license-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.license-table th {
+  background: #f9fafc;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+}
+.license-table tr:last-child td { border-bottom: none; }
+
+.back { margin-top: 24px; }
+.back a { color: var(--accent); text-decoration: none; }
+.back a:hover { text-decoration: underline; }
+
+/* ─── 모바일 최적화 ─────────────────────────────────────────── */
+
+/* iOS 사파리는 input/select 폰트가 16 px 미만이면 포커스 시 자동 줌-인.
+   기본 폰트 키워서 방지. */
+input, button, select, textarea {
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  header { padding: 20px 16px 8px; }
+  header h1 { font-size: 22px; }
+  header .sub { font-size: 13px; }
+
+  main { padding: 8px 12px 32px; }
+
+  .dropzone {
+    padding: 24px 12px;
+    border-radius: 10px;
+  }
+  .dropzone p { font-size: 14px; }
+  .dropzone .hint { font-size: 12px; }
+
+  .file-list { margin-top: 12px; gap: 6px; }
+  .file-item {
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+  }
+  .file-item .name { flex-basis: 100%; min-width: 0; }
+  .file-item .meta { font-size: 11px; }
+  .file-item .merge-toggle {
+    font-size: 11px;
+    gap: 4px;
+  }
+  .file-item .handle { font-size: 22px; padding: 4px; }
+  .file-item .thumb {
+    width: 44px;
+    height: 56px;
+  }
+  .file-item .info .name { font-size: 13px; }
+  .rotate-btn, .remove-btn {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .options {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+  .checkbox { font-size: 14px; }
+
+  .primary {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 20px;
+  }
+
+  .status { font-size: 13px; }
+  .status .loader-bar { max-width: 100%; height: 6px; }
+
+  .site-footer {
+    margin: 24px auto 16px;
+    padding: 12px 16px 0;
+    font-size: 12px;
+  }
+  .site-footer p {
+    line-height: 1.8;
+  }
+  .site-footer .sep {
+    display: none;  /* 좁은 화면에선 구분점 숨기고 줄바꿈으로 분리 */
+  }
+  .site-footer a {
+    display: inline-block;
+    margin: 0 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  header h1 { font-size: 20px; }
+  .dropzone { padding: 18px 10px; }
+}

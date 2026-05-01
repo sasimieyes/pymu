@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#2b6cb0" />
+  <title>PDF 변환기 · PyMuPDF + PaddleOCR</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+</head>
+<body>
+  <header>
+    <h1>PDF 변환기</h1>
+    <p class="sub">이미지·PDF를 하나의 PDF로 병합하고, 필요하면 OCR 텍스트 레이어를 추가합니다.</p>
+  </header>
+
+  <main>
+    <!-- ─── 변환/병합 탭 ──────────────────────────── -->
+    <section id="tab-convert">
+      <div id="dropzone" class="dropzone">
+        <p>여기로 파일을 끌어다 놓거나 클릭해서 선택하세요</p>
+        <p class="hint">지원: PDF · 이미지(JPG/PNG/BMP/TIFF/WEBP/GIF) · 오피스(DOCX/XLSX/PPTX) · 한글(HWP/HWPX)</p>
+        <input id="file-input" type="file" multiple
+               accept=".pdf,.jpg,.jpeg,.png,.bmp,.tif,.tiff,.webp,.gif,.doc,.docx,.hwp,.hwpx,.odt,.rtf,.xls,.xlsx,.ods,.csv,.ppt,.pptx,.odp,.txt,.html,.htm"
+               hidden />
+      </div>
+
+      <ul id="file-list" class="file-list"></ul>
+
+      <div class="options">
+        <label class="checkbox">
+          <input type="checkbox" id="ocr-toggle" checked />
+          OCR
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="llm-toggle" checked />
+          AI 오탈자교정
+        </label>
+        <button id="convert-btn" class="primary" disabled>PDF로 변환</button>
+      </div>
+    </section>
+
+    <div id="status" class="status" aria-live="polite"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="/licenses.html">오픈소스 라이선스</a>
+      <span class="sep">·</span>
+      <a id="footer-source-link" href="#" target="_blank" rel="noopener">Source code</a>
+      <span class="sep">·</span>
+      <span>Licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.txt" target="_blank" rel="noopener">AGPL-3.0</a></span>
+    </p>
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

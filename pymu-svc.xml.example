@@ -1,0 +1,38 @@
+<service>
+  <id>PymuPdf</id>
+  <name>PyMu PDF Converter (FastAPI)</name>
+  <description>PyMu PDF/OCR/merge web service (PaddleOCR + PyMuPDF + FastAPI), HTTPS on 443</description>
+
+  <executable>%BASE%\.venv\Scripts\python.exe</executable>
+  <!--
+    HTTPS on 443. SSL cert/key live OUTSIDE the project repo at ../ssl
+    (sibling directory) so they can be shared with other services on the
+    same host without committing private keys to any repo.
+
+    Replace <YOUR-DOMAIN> with your actual hostname. Cert filenames are
+    by convention "<DOMAIN>-key.pem" / "<DOMAIN>-chain.pem".
+  -->
+  <arguments>-m uvicorn backend.main:app --host 0.0.0.0 --port 443 --ssl-keyfile ../ssl/&lt;YOUR-DOMAIN&gt;-key.pem --ssl-certfile ../ssl/&lt;YOUR-DOMAIN&gt;-chain.pem</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+
+  <!-- Default PYMU_OCR_THREADS = 70% of cores. Uncomment to pin. -->
+  <!-- <env name="PYMU_OCR_THREADS" value="4"/> -->
+
+  <!-- Uncomment if LibreOffice (soffice) is not auto-detected. -->
+  <!-- <env name="SOFFICE_PATH" value="C:\Program Files\LibreOffice\program\soffice.exe"/> -->
+
+  <!-- Logs go OUTSIDE the project tree by default; change to taste. -->
+  <logpath>%BASE%\..\logs\pymu</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="none"/>
+
+  <startmode>Automatic</startmode>
+  <stopparentprocessfirst>true</stopparentprocessfirst>
+  <stoptimeout>30 sec</stoptimeout>
+</service>

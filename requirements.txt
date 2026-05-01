@@ -1,0 +1,11 @@
+setuptools>=68
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+PyMuPDF==1.24.10
+Pillow==10.4.0
+paddleocr==3.5.0
+# GPU build (CUDA 12.6). Install with:
+#   pip install paddlepaddle-gpu==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+paddlepaddle-gpu==3.3.1
+numpy==1.26.4

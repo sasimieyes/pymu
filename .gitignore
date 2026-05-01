@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project
+uploads/
+outputs/
+tmp/
+*.log
+
+# Paddle
+inference_model/
+.paddleocr/
+
+# SSL — keys/certs must never be committed to a public AGPL repo.
+ssl/
+*.pem
+*.key
+
+# Service install transient log
+.svc-install.log
+
+# 외부 다운로드로 받는 third-party binaries (라이선스 문제 없으나
+# repo 부피 / 업데이트 부담 줄이기 위해 git 추적 제외).
+# 설치 방법은 README 참조.
+pymu-svc.exe
+extensions/
+extensions/*
+
+# 운영 환경별로 직접 작성하는 service config — placeholder 인 .example 만 commit.
+pymu-svc.xml
+
+# Operator-specific service install script (hardcoded paths).
+.svc-install.ps1
