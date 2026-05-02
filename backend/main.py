@@ -63,6 +63,8 @@ async def lifespan(_app: FastAPI):
     # Runs in a background thread so the server still becomes ready quickly.
     _warmup_ocr_in_background()
     job_queue.QUEUE.start_worker(job_queue.process)
+    from backend.services import stats
+    stats.start_daily_summary_worker()
     yield
 
 
@@ -118,6 +120,7 @@ async def convert(
             "ocr_enabled": ocr_enabled,
             "llm_enhance": llm_enhance,
         },
+        client_ip=(request.client.host if request.client else ""),
     )
     job_queue.QUEUE.submit(job)
     return StreamingResponse(
@@ -144,6 +147,7 @@ async def ocr_pdf(
     job = job_queue.Job(
         kind="ocr",
         payload={"pdf_bytes": data, "filename": out_name, "llm_enhance": llm_enhance},
+        client_ip=(request.client.host if request.client else ""),
     )
     job_queue.QUEUE.submit(job)
     return StreamingResponse(

@@ -36,6 +36,8 @@ class Job:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     cancelled: bool = False
     events: "_queue.Queue[dict]" = field(default_factory=_queue.Queue)
+    client_ip: str = ""  # set by API handler (request.client.host)
+    started_at: float = 0.0  # set by worker when processing begins
 
 
 class JobQueue:
@@ -87,6 +89,9 @@ class JobQueue:
                 self._cv.wait()
 
     def _worker_loop(self, processor: Callable[[Job], None]) -> None:
+        import time
+        from backend.services import stats
+
         log.info("job queue worker started")
         while True:
             try:
@@ -94,20 +99,97 @@ class JobQueue:
             except Exception:
                 log.exception("acquire_next failed")
                 continue
+            job.started_at = time.time()
+            status = "done"
+            error_msg = ""
+            # 시작 한 줄 요약 로그.
+            payload_summary = self._payload_summary(job)
+            log.info(
+                "job %s start kind=%s client=%s %s",
+                job.id, job.kind, job.client_ip or "-", payload_summary,
+            )
             try:
                 if job.cancelled:
                     job.events.put({"type": "cancelled"})
+                    status = "cancelled"
                 else:
                     processor(job)
             except CancelledError:
+                status = "cancelled"
                 log.info("job %s cancelled", job.id)
                 job.events.put({"type": "cancelled"})
             except Exception as e:  # noqa: BLE001
+                status = "error"
+                error_msg = f"{type(e).__name__}: {e}"
                 log.exception("job %s failed", job.id)
                 job.events.put({"type": "error", "message": f"내부 오류: {e}"})
             finally:
+                elapsed = time.time() - job.started_at
+                # JSONL + 한 줄 종료 로그.
+                metrics = self._collect_metrics(job)
+                record = {
+                    "job_id": job.id,
+                    "kind": job.kind,
+                    "client": job.client_ip or "-",
+                    "status": status,
+                    "took_s": round(elapsed, 2),
+                    "ocr": bool(job.payload.get("ocr_enabled", True)),
+                    "llm": bool(job.payload.get("llm_enhance", True)),
+                    **metrics,
+                }
+                if error_msg:
+                    record["error"] = error_msg
+                stats.log_conversion(record)
+                log.info(
+                    "job %s %s elapsed=%.1fs %s",
+                    job.id, status, elapsed, " ".join(f"{k}={v}" for k, v in metrics.items()),
+                )
                 with self._cv:
                     self._running = None
+
+    @staticmethod
+    def _payload_summary(job: "Job") -> str:
+        if job.kind == "convert":
+            items = job.payload.get("items") or []
+            files = len(items)
+            in_bytes = sum(getattr(it, "data", b"").__len__() for it in items)
+            return (
+                f"files={files} in_bytes={in_bytes} "
+                f"ocr={bool(job.payload.get('ocr_enabled', True))} "
+                f"llm={bool(job.payload.get('llm_enhance', True))}"
+            )
+        if job.kind == "ocr":
+            in_bytes = len(job.payload.get("pdf_bytes") or b"")
+            return (
+                f"in_bytes={in_bytes} "
+                f"llm={bool(job.payload.get('llm_enhance', True))}"
+            )
+        return ""
+
+    @staticmethod
+    def _collect_metrics(job: "Job") -> dict:
+        """Pull metrics off the Job after processing. Filled by processor via
+        job.payload['_metrics'] (out_bytes, pages, mime). Best-effort."""
+        m = job.payload.get("_metrics") or {}
+        if job.kind == "convert":
+            items = job.payload.get("items") or []
+            files = len(items)
+            in_bytes = sum(getattr(it, "data", b"").__len__() for it in items)
+            return {
+                "files": files,
+                "in_bytes": in_bytes,
+                "pages": m.get("pages", 0),
+                "out_bytes": m.get("out_bytes", 0),
+                "mime": m.get("mime", "-"),
+            }
+        if job.kind == "ocr":
+            return {
+                "in_bytes": len(job.payload.get("pdf_bytes") or b""),
+                "pages": m.get("pages", 0),
+                "out_bytes": m.get("out_bytes", 0),
+                "mime": m.get("mime", "-"),
+            }
+        return {}
 
     def start_worker(self, processor: Callable[[Job], None]) -> None:
         """Start the background worker thread once."""
@@ -253,6 +335,16 @@ def _process_convert(job: Job) -> None:
         filename, pdf_bytes = results[0]
         payload_b64 = base64.b64encode(pdf_bytes).decode("ascii")
         mime = "application/pdf"
+        # 페이지 수 — pdf_bytes 열어 확인.
+        try:
+            import fitz as _fitz
+            with _fitz.open(stream=pdf_bytes, filetype="pdf") as _d:
+                _pages = len(_d)
+        except Exception:
+            _pages = 0
+        job.payload["_metrics"] = {
+            "pages": _pages, "out_bytes": len(pdf_bytes), "mime": mime,
+        }
     else:
         # 다중 결과 → zip
         buf = io.BytesIO()
@@ -272,6 +364,18 @@ def _process_convert(job: Job) -> None:
         filename = "converted.zip"
         payload_b64 = base64.b64encode(zip_bytes).decode("ascii")
         mime = "application/zip"
+        # 모든 그룹의 페이지 합산.
+        try:
+            import fitz as _fitz
+            total_pages = 0
+            for _fn, _pdf in results:
+                with _fitz.open(stream=_pdf, filetype="pdf") as _d:
+                    total_pages += len(_d)
+        except Exception:
+            total_pages = 0
+        job.payload["_metrics"] = {
+            "pages": total_pages, "out_bytes": len(zip_bytes), "mime": mime,
+        }
 
     job.events.put({"type": "progress", "percent": 100, "label": "완료"})
     job.events.put({
@@ -325,6 +429,15 @@ def _process_ocr(job: Job) -> None:
     _check_cancelled(job)
     emit_progress(96, "PDF 직렬화…")
     payload_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+    try:
+        import fitz as _fitz
+        with _fitz.open(stream=pdf_bytes, filetype="pdf") as _d:
+            _pages = len(_d)
+    except Exception:
+        _pages = 0
+    job.payload["_metrics"] = {
+        "pages": _pages, "out_bytes": len(pdf_bytes), "mime": "application/pdf",
+    }
     job.events.put({"type": "progress", "percent": 100, "label": "완료"})
     job.events.put({
         "type": "done", "filename": filename, "data": payload_b64,
