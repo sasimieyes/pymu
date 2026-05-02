@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#2b6cb0" />
+  <meta name="google-adsense-account" content="ca-pub-8899282058623600">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8899282058623600"
+          crossorigin="anonymous"></script>
   <title>PDF 변환기 · PyMuPDF + PaddleOCR</title>
   <link rel="stylesheet" href="/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -32,11 +35,17 @@
       <div class="options">
         <label class="checkbox">
           <input type="checkbox" id="ocr-toggle" checked />
-          OCR
+          <span class="checkbox-label">
+            <strong>OCR</strong>
+            <span class="checkbox-hint">- 이미지 또는 이미지PDF 에 텍스트 레이어를 입힙니다.</span>
+          </span>
         </label>
         <label class="checkbox">
           <input type="checkbox" id="llm-toggle" checked />
-          AI 오탈자교정
+          <span class="checkbox-label">
+            <strong>AI 오탈자보정</strong>
+            <span class="checkbox-hint">- OCR 중 추출된 텍스트의 오탈자를 AI로 교정합니다. (주의 - 변환시간이 크게 늘어납니다)</span>
+          </span>
         </label>
         <button id="convert-btn" class="primary" disabled>PDF로 변환</button>
       </div>
@@ -46,10 +55,21 @@
   </main>
 
   <footer class="site-footer">
+    <p class="footer-nav">
+      <a href="/about.html">소개</a>
+      <span class="sep">·</span>
+      <a href="/help.html">사용법</a>
+      <span class="sep">·</span>
+      <a href="/faq.html">FAQ</a>
+      <span class="sep">·</span>
+      <a href="/privacy.html">개인정보처리방침</a>
+      <span class="sep">·</span>
+      <a href="/terms.html">이용약관</a>
+    </p>
     <p>
       <a href="/licenses.html">오픈소스 라이선스</a>
       <span class="sep">·</span>
-      <a id="footer-source-link" href="#" target="_blank" rel="noopener">Source code</a>
+      <a id="footer-source-link" href="https://github.com/sasimieyes/pymu" target="_blank" rel="noopener">Source code</a>
       <span class="sep">·</span>
       <span>Licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.txt" target="_blank" rel="noopener">AGPL-3.0</a></span>
     </p>

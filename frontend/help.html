@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#2b6cb0" />
+  <meta name="google-adsense-account" content="ca-pub-8899282058623600">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8899282058623600"
+          crossorigin="anonymous"></script>
+  <title>사용법 · PDF 변환기</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1><a href="/" class="home-link">PDF 변환기</a></h1>
+    <p class="sub">사용법</p>
+  </header>
+  <main>
+    <article class="content-block">
+      <h2>빠른 시작</h2>
+      <ol>
+        <li>드롭존에 파일을 끌어다 놓거나 클릭해서 선택</li>
+        <li>(선택) 회전 / 순서 / 병합 그룹 조정</li>
+        <li>(선택) OCR / AI 오탈자보정 토글 확인</li>
+        <li><strong>PDF로 변환</strong> 클릭 → 진행률 표시 → 자동 다운로드</li>
+      </ol>
+
+      <h2>지원 형식</h2>
+      <table class="formats-table">
+        <thead><tr><th>분류</th><th>확장자</th></tr></thead>
+        <tbody>
+          <tr><td>PDF</td><td>.pdf</td></tr>
+          <tr><td>이미지</td><td>.jpg / .jpeg / .png / .bmp / .tif / .tiff / .webp / .gif</td></tr>
+          <tr><td>오피스</td><td>.docx / .doc / .xlsx / .xls / .pptx / .ppt / .odt / .rtf / .ods / .csv / .odp / .txt / .html</td></tr>
+          <tr><td>한글</td><td>.hwp / .hwpx</td></tr>
+        </tbody>
+      </table>
+
+      <h2>옵션 설명</h2>
+      <h3>회전</h3>
+      <p>각 파일 옆 <em>↻ 회전</em> 버튼을 누르면 90° 단위로 시계방향 회전합니다. 썸네일이 즉시 회전되어 결과 방향을 미리 확인할 수 있습니다.</p>
+
+      <h3>병합 / 단독 분리</h3>
+      <p>각 파일 옆 <strong>병합</strong> 체크박스를 사용합니다. 체크된 파일들은 하나의 PDF 로 병합되고, 체크 해제된 파일은 각각 단독 PDF 로 출력되어 zip 으로 묶여 다운로드됩니다.</p>
+
+      <h3>OCR</h3>
+      <p>이미지나 스캔 PDF 에 보이지 않는 텍스트 레이어를 추가해 검색·복사·붙여넣기를 가능하게 합니다. 한국어, 영어, 숫자 인식을 지원합니다.</p>
+
+      <h3>AI 오탈자보정</h3>
+      <p>OCR 결과의 한글 띄어쓰기 누락이나 명백한 오탈자(예: "수십역" → "수십억")를 로컬 LLM 으로 교정합니다. 정확도는 향상되지만 변환 시간이 크게 늘어납니다.</p>
+
+      <h2>주의 / 한계</h2>
+      <ul>
+        <li>업로드 파일 크기 한도: 요청당 200 MB</li>
+        <li>결과물의 모든 페이지는 A4 portrait (210 × 297 mm) 로 통일됨</li>
+        <li>한 번에 한 작업씩 처리 (큐), 대기자에게는 순번 표시</li>
+        <li>변환 도중 탭을 닫으면 작업이 자동 취소되고 다음 대기열로 넘어감</li>
+      </ul>
+
+      <p class="back"><a href="/">← 변환기로 돌아가기</a></p>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <p class="footer-nav">
+      <a href="/about.html">소개</a>
+      <span class="sep">·</span>
+      <a href="/help.html">사용법</a>
+      <span class="sep">·</span>
+      <a href="/faq.html">FAQ</a>
+      <span class="sep">·</span>
+      <a href="/privacy.html">개인정보처리방침</a>
+      <span class="sep">·</span>
+      <a href="/terms.html">이용약관</a>
+    </p>
+    <p>
+      <a href="/licenses.html">오픈소스 라이선스</a>
+      <span class="sep">·</span>
+      <a href="https://github.com/sasimieyes/pymu" target="_blank" rel="noopener">Source code</a>
+      <span class="sep">·</span>
+      <span>Licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.txt" target="_blank" rel="noopener">AGPL-3.0</a></span>
+    </p>
+  </footer>
+</body>
+</html>
