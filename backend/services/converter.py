@@ -132,11 +132,15 @@ def _image_bytes_to_pdf(data: bytes, rotation: int) -> fitz.Document:
 
     # Downscale very large photos so the resulting PDF page (and any
     # downstream rasterization) stays within sane pixel budgets.
+    # BILINEAR (vs the previous LANCZOS) is ~2x faster on large images and
+    # the visual / OCR quality difference is negligible — paddle re-rasterizes
+    # the page at its own zoom anyway, so any anti-aliasing nuance below the
+    # OCR-input pixel grid is washed out.
     longest = max(img.width, img.height)
     if longest > _MAX_IMAGE_LONG_EDGE_PX:
         scale = _MAX_IMAGE_LONG_EDGE_PX / longest
         new_size = (max(1, int(img.width * scale)), max(1, int(img.height * scale)))
-        img = img.resize(new_size, Image.LANCZOS)
+        img = img.resize(new_size, Image.BILINEAR)
 
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=_MERGE_JPEG_QUALITY, optimize=False)
