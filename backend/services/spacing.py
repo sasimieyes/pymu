@@ -118,23 +118,49 @@ def apply_correction(text: str, use_llm: bool = True) -> str:
 # 호출. 호출당 first-token-latency 를 page 1번으로 줄이고, LLM 이 줄 사이
 # 컨텍스트를 봐서 줄 끝/시작 띄어쓰기, 마침표 직후 띄어쓰기, 줄바꿈으로
 # 분리된 단어 등을 더 자연스럽게 처리할 수 있게 한다.
-_BATCH_PROMPT = (
-    "다음은 OCR로 추출한 한국어 텍스트의 여러 줄입니다. 각 줄의 띄어쓰기와 명백한 오탈자만 교정해서 같은 형식으로 출력하세요.\n"
-    "- 출력 형식: 입력과 동일한 [번호] 접두사를 그대로 유지하고, 그 뒤에 교정된 텍스트 한 줄.\n"
-    "- 줄 수, 줄 순서, 번호 모두 입력과 똑같이 유지하세요. 줄을 합치거나 분리하지 마세요.\n"
-    "- 원문의 모든 글자(영어, 숫자, 구두점, 기호 포함)를 그대로 유지하세요. 영문/숫자/기호를 절대 빼거나 다른 글자로 바꾸지 마세요.\n"
-    "- 추가 설명, 인용 부호, 번역, 주석 없이 [번호] 줄들만 출력하세요.\n\n"
-    "입력:\n{items}\n\n"
+#
+# Prompt 구성: system + few-shot + user-data-only.
+# - 규칙은 system 메시지로 분리 → 작은 모델(e2b)에서 형식 일탈/지시 누락↓
+# - 1쌍의 few-shot (한글 띄어쓰기 / Latin 분리 / 자모 오탈자 교정 모두 cover)
+# - system + few-shot 부분은 모든 호출에 동일 → ollama 의 KV cache prefix
+#   reuse 로 prompt eval 비용이 cached call 에서 ~3배 빨라짐 (실측). 페이지가
+#   누적될수록 추가 부담 없이 안정성·정확도만 확보.
+_BATCH_SYS_PROMPT = (
+    "당신은 OCR로 추출된 한국어 텍스트의 띄어쓰기와 오탈자만 보정하는 도구입니다. 다음 규칙을 절대 어기지 마세요.\n\n"
+    "[허용되는 변경]\n"
+    "1. 한글 단어 사이의 공백 추가/삭제\n"
+    "2. 한글과 영문/숫자/기호 사이의 공백 추가/삭제\n"
+    "3. 단일 한글 자모 오탈자 (예: \"역\"→\"억\", \"지\"→\"치\" 처럼 인접 자모 오인식)\n\n"
+    "[절대 금지]\n"
+    "1. 영문 단어, 숫자, 구두점(. , : ; \" ' ( ) [ ])과 기호를 추가/삭제/변경하지 마세요.\n"
+    "2. 단어를 다른 단어로 의역/대체하지 마세요. 의미가 어색해도 자모 오인식이 아니면 그대로 두세요.\n"
+    "3. 줄을 합치거나 분리하지 마세요. 입력 줄 수와 출력 줄 수는 반드시 같아야 합니다.\n"
+    "4. 입력에 없던 콤마, 마침표, 따옴표를 새로 넣지 마세요.\n\n"
+    "[출력 형식]\n"
+    "- 입력의 각 줄은 \"[N] 본문\" 형태입니다. 출력도 동일하게 \"[N] 교정본문\" 형태로, 같은 N을 사용해 같은 순서로 출력하세요.\n"
+    "- 교정할 부분이 없으면 원문을 그대로 출력하세요. 절대 줄을 생략하지 마세요.\n"
+    "- \"[N] 본문\" 줄 외에 어떤 텍스트도 출력하지 마세요. 헤더, 빈 줄, 설명, \"출력:\" 같은 라벨, 코드블록, 인용부호 모두 금지."
+)
+_BATCH_FEWSHOT_USER = (
+    "입력:\n"
+    "[1] 안녕하세요반갑습니다\n"
+    "[2] Pythonprogramming은인기있다\n"
+    "[3] 수십역원규모이다\n\n"
     "출력:"
+)
+_BATCH_FEWSHOT_ASSISTANT = (
+    "[1] 안녕하세요 반갑습니다\n"
+    "[2] Python programming은 인기있다\n"
+    "[3] 수십억 원 규모이다"
 )
 
 # LLM 이 출력하는 numbered line 의 다양한 형식 ([1], 1., 1:, 1)) 모두 매칭.
 _RE_NUMBERED_LINE = re.compile(r"^\s*[\[\(]?(\d+)[\]\)\.\:]\s*(.*)$")
 
-# 한 번 LLM 호출에 보낼 최대 라인 수. gemma4:e2b 같은 작은 모델은 30+줄 numbered
-# list 를 안정적으로 출력하지 못해 mapping mismatch 가 잦았다. 10 줄 chunk 면
-# 작은 모델도 안정적이고, 호출 수 (페이지당 50→5) 도 충분히 줄어든다.
-_BATCH_CHUNK_SIZE = 10
+# 한 번 LLM 호출에 보낼 최대 라인 수. system + few-shot 분리한 v2 프롬프트
+# 기준 25줄까지 mapping 100%, ASCII 보존 100% 실측. 안전 마진 두고 20 으로 둠.
+# 페이지당 호출 수가 (50줄 기준) 5→3 으로 줄어 wall time ~11% 단축.
+_BATCH_CHUNK_SIZE = 20
 # 같은 ollama 모델에 chunk 호출을 동시에 던질 worker 수. ollama 의
 # OLLAMA_NUM_PARALLEL 환경변수와 같이 늘려야 GPU 가 실제로 batch 처리.
 # RTX 4070 Laptop (8GB) + paddle (1.5G) + gemma e2b (2G/slot) 환경에서
@@ -150,7 +176,12 @@ def _llm_correct_batch_partial(texts: list[str]) -> dict[int, str]:
     Raises httpx errors on transport failure.
     """
     items = "\n".join(f"[{i + 1}] {t}" for i, t in enumerate(texts))
-    prompt = _BATCH_PROMPT.format(items=items)
+    messages = [
+        {"role": "system", "content": _BATCH_SYS_PROMPT},
+        {"role": "user", "content": _BATCH_FEWSHOT_USER},
+        {"role": "assistant", "content": _BATCH_FEWSHOT_ASSISTANT},
+        {"role": "user", "content": f"입력:\n{items}\n\n출력:"},
+    ]
     # 한국어 1글자 = gemma tokenizer 에서 보통 2~3 토큰. 출력은 입력과 비슷한
     # 길이 (약간 더 길 수도 — 띄어쓰기 추가). 충분히 잡아주지 않으면 LLM 이
     # 중간에 잘려 mapping mismatch 발생 → fallback. 8192 까지 허용 (gemma4
@@ -161,17 +192,21 @@ def _llm_correct_batch_partial(texts: list[str]) -> dict[int, str]:
         f"{_OLLAMA_URL}/api/chat",
         json={
             "model": _OLLAMA_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "stream": False,
             "think": False,
             "keep_alive": "30s",
             "options": {
                 "temperature": 0,
                 "num_predict": n_predict,
-                # KV cache 작게 — 우리 chunk 가 짧아 큰 컨텍스트 불필요.
-                # 추론 메모리/속도 모두 이득.
-                "num_ctx": 2048,
+                # system + few-shot 추가로 prefix 가 ~650 tok. chunk=20 의
+                # 입력+출력까지 합치면 1.5~2K. 4096 이면 안전 마진 충분하고,
+                # 동일 num_ctx 유지해야 ollama prefix KV cache 가 호출 간 재사용됨.
+                "num_ctx": 4096,
                 "use_mmap": True,
+                # 모델이 응답 끝낸 뒤 다음 입력 라벨을 hallucinate 하는 케이스
+                # 방지. 측정상 트리거 빈도는 낮지만 안전장치.
+                "stop": ["입력:", "원문:", "참고:"],
             },
         },
     )
