@@ -165,15 +165,16 @@ _BATCH_CHUNK_SIZE = 20
 # OLLAMA_NUM_PARALLEL 환경변수와 같이 늘려야 GPU 가 실제로 batch 처리.
 # 측정 (RTX 4070 Laptop 8GB, e2b q4, num_ctx=4096):
 #   - VRAM: NUM_PARALLEL=N 로 시작 시 ollama 가 N slot 분량 KV pool 을 미리
-#     확보. N=8 에서 sandbox VRAM peak ~4460 MB, paddle (1.5G) 합쳐도 ~6GB
+#     확보. N=4 sandbox VRAM peak ~4460 MB, paddle (1.5G) 합쳐도 ~6GB
 #     → 8GB 한계 대비 여유 2GB.
-#   - Throughput: aggregate tps 30(N=1) → 56(N=2) → 89(N=4) → 107(N=6) → 120(N=8).
-#     N=6 부근부터 효율 체감 (~50%).
-#   - Per-call wall: N=8 에서 12.2s (N=2 의 6.5s 대비 +88%). 즉 chunks ≤4 인
-#     짧은 페이지는 N=4 가 더 빨라 보일 수 있다 (1 wave 안에 끝나므로).
-#     반대로 chunks ≥5 인 페이지는 N=8 이 wave 수 감소로 우위.
-# N=8 채택 — 큰 페이지(100줄+) 변환에서 wave 수를 1 로 압축하는 효과.
-_BATCH_PARALLEL = 8
+#   - Sandbox throughput: aggregate tps 30(N=1) → 56(N=2) → 89(N=4) →
+#     107(N=6) → 120(N=8). N=4 부근까지 73% scaling 효율, 그 이상 체감.
+#   - Sandbox per-call wall: N=2 6.5s, N=4 8.2s, N=8 12.2s. 단일 호출은
+#     slot 늘수록 느려지므로 페이지의 chunk 수가 적으면 큰 N 이 손해.
+# 워크로드 분석: 평균 페이지가 60줄 이하 압도적 → chunks 3 이하. 이 영역에서
+# N=4 가 N=8 (12.2s) 대비 wall 8.2s 로 더 빠르고, chunks=4 페이지도 1 wave
+# 로 끝남. chunks ≥5 인 큰 페이지에서만 N=8 우위지만 그 비중이 작음.
+_BATCH_PARALLEL = 4
 
 
 def _llm_correct_batch_partial(texts: list[str]) -> dict[int, str]:
