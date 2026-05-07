@@ -324,9 +324,35 @@ def add_ocr_layer(
             text_rects = _existing_text_rects(page)
 
             zoom = _ocr_zoom_for(page)
-            pix = page.get_pixmap(
-                matrix=fitz.Matrix(zoom, zoom), alpha=False,
-            )
+            if text_rects:
+                # Hybrid OCR (PyMuPDF4LLM-style): redact existing vector text
+                # on a throwaway copy of the page, then raster the cleaned
+                # copy. paddle's detection / recognition no longer waste
+                # cycles on regions that already have machine-readable text,
+                # and OCR results don't duplicate it. PyMuPDF4LLM reports up
+                # to ~50% OCR-time reduction on text-heavy pages with this
+                # approach. We use PDF_REDACT_IMAGE_NONE so embedded images
+                # survive (otherwise the redaction box would erase the photo
+                # underneath the text — disastrous for scanned forms with
+                # caption text on top of an image).
+                tmp_doc = fitz.open()
+                tmp_doc.insert_pdf(doc, from_page=page_idx, to_page=page_idx)
+                tmp_page = tmp_doc[0]
+                for tr in text_rects:
+                    tmp_page.add_redact_annot(tr)
+                tmp_page.apply_redactions(
+                    images=fitz.PDF_REDACT_IMAGE_NONE,
+                )
+                pix = tmp_page.get_pixmap(
+                    matrix=fitz.Matrix(zoom, zoom), alpha=False,
+                )
+                tmp_doc.close()
+            else:
+                # No vector text on this page (typical photo/scan/screenshot)
+                # — skip the copy + redact overhead.
+                pix = page.get_pixmap(
+                    matrix=fitz.Matrix(zoom, zoom), alpha=False,
+                )
             full = Image.open(io.BytesIO(pix.tobytes("png")))
             ocr_boxes = _ocr_image(full)
             if not ocr_boxes:
