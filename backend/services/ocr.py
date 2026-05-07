@@ -22,6 +22,7 @@ import io
 import logging
 import os
 import threading
+import time
 from typing import Iterable
 
 import fitz  # PyMuPDF
@@ -43,6 +44,18 @@ log = logging.getLogger("pymu.ocr")
 _OCR_LOCK = threading.Lock()
 _OCR_INSTANCE = None
 
+# Paddle keep_alive — same concept as ollama's, but implemented locally
+# because paddle lives in this Python process (we can't lean on an external
+# daemon to age it out). After this many seconds with no OCR call the
+# background watcher unloads the singleton and frees its GPU weights via
+# paddle.device.cuda.empty_cache(). The next OCR call eats an ~8.5s cold
+# load. Set PYMU_PADDLE_KEEP_ALIVE_SEC=0 to disable (paddle stays loaded
+# for the lifetime of the service).
+_PADDLE_KEEP_ALIVE_SEC = float(os.environ.get("PYMU_PADDLE_KEEP_ALIVE_SEC", "180"))
+_LAST_USE_LOCK = threading.Lock()
+_last_use_time: float | None = None
+_idle_watcher_started = False
+
 # Default render zoom for normal PDF pages (2.0 ≈ 144 DPI). Simple,
 # predictable baseline; revisit once we have a measurement to compare
 # against.
@@ -59,6 +72,71 @@ _MAX_OCR_PIXELS = 9_000_000  # ~9 MP, e.g. 3464×2598 or 3674×2449
 # An OCR'd box is treated as "already covered" if at least this fraction of
 # its area lies inside any existing vector-text bbox.
 _TEXT_OVERLAP_THRESHOLD = 0.7
+
+
+def _mark_used() -> None:
+    """Record current monotonic time as the last paddle-OCR use.
+
+    Called after every successful OCR call. The idle watcher reads this to
+    decide when to unload.
+    """
+    global _last_use_time
+    with _LAST_USE_LOCK:
+        _last_use_time = time.monotonic()
+
+
+def _release_paddle() -> None:
+    """Drop the PaddleOCR singleton and free its GPU weights.
+
+    Safe to call even if no instance exists. The next _get_ocr() call will
+    rebuild the singleton (paying the ~8.5s cold-load cost).
+    """
+    global _OCR_INSTANCE, _last_use_time
+    with _OCR_LOCK:
+        if _OCR_INSTANCE is None:
+            return
+        log.info("paddle: releasing weights (idle > %ds)", int(_PADDLE_KEEP_ALIVE_SEC))
+        _OCR_INSTANCE = None
+    with _LAST_USE_LOCK:
+        _last_use_time = None
+    try:
+        import gc
+        gc.collect()
+        import paddle
+        paddle.device.cuda.empty_cache()
+    except Exception:
+        log.debug("paddle release: empty_cache failed (non-fatal)", exc_info=True)
+
+
+def _idle_watcher() -> None:
+    """Background loop: every 30s check if paddle has been idle past
+    keep_alive and unload it if so. Daemon thread, runs forever.
+    """
+    while True:
+        time.sleep(30)
+        with _LAST_USE_LOCK:
+            lu = _last_use_time
+            inst_present = _OCR_INSTANCE is not None
+        if not inst_present or lu is None:
+            continue
+        idle = time.monotonic() - lu
+        if idle >= _PADDLE_KEEP_ALIVE_SEC:
+            _release_paddle()
+
+
+def _ensure_idle_watcher_started() -> None:
+    """Start the daemon idle watcher exactly once. No-op if keep_alive<=0."""
+    global _idle_watcher_started
+    if _idle_watcher_started:
+        return
+    if _PADDLE_KEEP_ALIVE_SEC <= 0:
+        log.info("paddle keep_alive disabled (PYMU_PADDLE_KEEP_ALIVE_SEC<=0); model stays loaded for service lifetime")
+        _idle_watcher_started = True
+        return
+    t = threading.Thread(target=_idle_watcher, daemon=True, name="paddle-idle")
+    t.start()
+    _idle_watcher_started = True
+    log.info("paddle idle watcher started (keep_alive=%ds)", int(_PADDLE_KEEP_ALIVE_SEC))
 
 
 def _get_ocr():
@@ -102,6 +180,7 @@ def _get_ocr():
                     kwargs["cpu_threads"] = THREAD_CAP
                     log.info("PaddleOCR cpu_threads=%d", THREAD_CAP)
                 _OCR_INSTANCE = PaddleOCR(**kwargs)
+    _ensure_idle_watcher_started()
     return _OCR_INSTANCE
 
 
@@ -111,6 +190,7 @@ def warmup() -> None:
     try:
         dummy = np.zeros((64, 256, 3), dtype=np.uint8)
         ocr_inst.predict(dummy)
+        _mark_used()
     except Exception:
         log.warning("warmup dummy inference failed (non-fatal)", exc_info=True)
 
@@ -134,6 +214,7 @@ def _ocr_image(
     ocr = _get_ocr()
     arr = np.array(img.convert("RGB"))
     raw = ocr.predict(arr)
+    _mark_used()
     if not raw:
         return []
     # OCRResult is a dict-like (UserDict). Use item access, not getattr.

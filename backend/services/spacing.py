@@ -30,6 +30,12 @@ _OLLAMA_MODEL = os.environ.get("PYMU_SPACING_MODEL", "gemma4:e2b-it-q4_K_M")
 # 첫 호출은 모델 로드(디스크→VRAM)까지 합쳐 20초를 넘길 수 있어 90s 로 둠.
 # 정상 추론은 1~5초라 timeout 이 길어도 응답이 빠르게 돌아오면 영향 없음.
 _OLLAMA_TIMEOUT = float(os.environ.get("PYMU_OLLAMA_TIMEOUT", "90"))
+# 모델 keep_alive — 변환 종료 후 ollama 가 e2b 를 GPU 에 유지하는 시간.
+# 기본 2m: burst 변환 (분 단위 연속) 사이엔 cold start (~8s) 회피, 그 이상
+# idle 시 ollama 가 자동 unload 해서 VRAM 회수. 운영자가 워크로드에 맞춰
+# 환경변수로 조절 가능. release_model() 도 이 값을 사용해 즉시 unload 하지
+# 않고 timeout 만 갱신.
+_OLLAMA_KEEP_ALIVE = os.environ.get("PYMU_OLLAMA_KEEP_ALIVE", "2m")
 
 _PROMPT = (
     "다음은 OCR로 추출한 한국어 텍스트 한 줄입니다. 띄어쓰기와 명백한 오탈자만 교정해서 결과만 출력하세요.\n"
@@ -73,9 +79,7 @@ def _llm_correct(text: str) -> str:
             "messages": [{"role": "user", "content": _PROMPT.format(text=text)}],
             "stream": False,
             "think": False,
-            # 한 변환 도중에는 페이지 간 reload 없이 유지하도록 30 초.
-            # 변환 끝나고 release_model() 이 호출되면 즉시 unload.
-            "keep_alive": "30s",
+            "keep_alive": _OLLAMA_KEEP_ALIVE,
             "options": {
                 "temperature": 0,
                 "num_predict": 400,
@@ -206,7 +210,7 @@ def _llm_correct_batch_partial(texts: list[str]) -> dict[int, str]:
             "messages": messages,
             "stream": False,
             "think": False,
-            "keep_alive": "30s",
+            "keep_alive": _OLLAMA_KEEP_ALIVE,
             "options": {
                 "temperature": 0,
                 "num_predict": n_predict,
@@ -329,12 +333,14 @@ def warmup() -> None:
 
 
 def release_model() -> None:
-    """Force-unload the spacing LLM from VRAM via keep_alive=0.
+    """Refresh the spacing LLM's keep_alive timer at end of conversion.
 
-    Called by the /api/convert worker once OCR + LLM correction is done so
-    the ~2 GB GPU memory is freed for other work. Non-fatal if Ollama is
-    unreachable — the model would auto-unload after the keep_alive on the
-    last inference call expires anyway.
+    Called by the /api/convert worker once OCR + LLM correction is done.
+    Historical behavior was to send keep_alive=0 for immediate unload, but
+    that caused every conversion to pay an ~8s cold-load on its first page.
+    Now we send the configured _OLLAMA_KEEP_ALIVE so ollama auto-unloads
+    after that idle window — burst conversions reuse the warm model, and
+    long-idle ones still free VRAM. Non-fatal if Ollama is unreachable.
     """
     try:
         _client().post(
@@ -343,10 +349,10 @@ def release_model() -> None:
                 "model": _OLLAMA_MODEL,
                 "messages": [],
                 "stream": False,
-                "keep_alive": 0,
+                "keep_alive": _OLLAMA_KEEP_ALIVE,
             },
             timeout=5.0,
         )
-        log.info("spacing model unloaded (keep_alive=0)")
+        log.info("spacing keep_alive refreshed (=%s)", _OLLAMA_KEEP_ALIVE)
     except Exception:
         log.debug("spacing release failed (non-fatal)", exc_info=True)
