@@ -163,9 +163,17 @@ _RE_NUMBERED_LINE = re.compile(r"^\s*[\[\(]?(\d+)[\]\)\.\:]\s*(.*)$")
 _BATCH_CHUNK_SIZE = 20
 # 같은 ollama 모델에 chunk 호출을 동시에 던질 worker 수. ollama 의
 # OLLAMA_NUM_PARALLEL 환경변수와 같이 늘려야 GPU 가 실제로 batch 처리.
-# RTX 4070 Laptop (8GB) + paddle (1.5G) + gemma e2b (2G/slot) 환경에서
-# slot 2개면 paddle 포함 5.5G 사용으로 안전.
-_BATCH_PARALLEL = 2
+# 측정 (RTX 4070 Laptop 8GB, e2b q4, num_ctx=4096):
+#   - VRAM: NUM_PARALLEL=N 로 시작 시 ollama 가 N slot 분량 KV pool 을 미리
+#     확보. N=8 에서 sandbox VRAM peak ~4460 MB, paddle (1.5G) 합쳐도 ~6GB
+#     → 8GB 한계 대비 여유 2GB.
+#   - Throughput: aggregate tps 30(N=1) → 56(N=2) → 89(N=4) → 107(N=6) → 120(N=8).
+#     N=6 부근부터 효율 체감 (~50%).
+#   - Per-call wall: N=8 에서 12.2s (N=2 의 6.5s 대비 +88%). 즉 chunks ≤4 인
+#     짧은 페이지는 N=4 가 더 빨라 보일 수 있다 (1 wave 안에 끝나므로).
+#     반대로 chunks ≥5 인 페이지는 N=8 이 wave 수 감소로 우위.
+# N=8 채택 — 큰 페이지(100줄+) 변환에서 wave 수를 1 로 압축하는 효과.
+_BATCH_PARALLEL = 8
 
 
 def _llm_correct_batch_partial(texts: list[str]) -> dict[int, str]:
