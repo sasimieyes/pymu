@@ -158,9 +158,11 @@ _BATCH_FEWSHOT_ASSISTANT = (
 _RE_NUMBERED_LINE = re.compile(r"^\s*[\[\(]?(\d+)[\]\)\.\:]\s*(.*)$")
 
 # 한 번 LLM 호출에 보낼 최대 라인 수. system + few-shot 분리한 v2 프롬프트
-# 기준 25줄까지 mapping 100%, ASCII 보존 100% 실측. 안전 마진 두고 20 으로 둠.
-# 페이지당 호출 수가 (50줄 기준) 5→3 으로 줄어 wall time ~11% 단축.
-_BATCH_CHUNK_SIZE = 20
+# 기준 25줄까지 mapping 100%, ASCII 보존 100% 실측. 25 채택 — chunks 수가
+# 줄어 1 wave 안에 들어갈 가능성↑. 41줄 페이지가 3 chunks→2 chunks 로 줄어
+# 1 wave (N=4) 안에 끝남. mapping 안정성은 검증된 한계점이므로 추가 마진은
+# 측정 후 확장 가능.
+_BATCH_CHUNK_SIZE = 25
 # 같은 ollama 모델에 chunk 호출을 동시에 던질 worker 수. ollama 의
 # OLLAMA_NUM_PARALLEL 환경변수와 같이 늘려야 GPU 가 실제로 batch 처리.
 # 측정 (RTX 4070 Laptop 8GB, e2b q4, num_ctx=4096):
