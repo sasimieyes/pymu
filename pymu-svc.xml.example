@@ -1,18 +1,18 @@
 <service>
   <id>PymuPdf</id>
   <name>PyMu PDF Converter (FastAPI)</name>
-  <description>PyMu PDF/OCR/merge web service (PaddleOCR + PyMuPDF + FastAPI), HTTPS on 443</description>
+  <description>PyMu PDF/OCR/merge web service (PaddleOCR + PyMuPDF + FastAPI), HTTPS on 9989</description>
 
   <executable>%BASE%\.venv\Scripts\python.exe</executable>
   <!--
-    HTTPS on 443. SSL cert/key live OUTSIDE the project repo at ../ssl
+    HTTPS on 9989. SSL cert/key live OUTSIDE the project repo at ../ssl
     (sibling directory) so they can be shared with other services on the
     same host without committing private keys to any repo.
 
     Replace <YOUR-DOMAIN> with your actual hostname. Cert filenames are
     by convention "<DOMAIN>-key.pem" / "<DOMAIN>-chain.pem".
   -->
-  <arguments>-m uvicorn backend.main:app --host 0.0.0.0 --port 443 --ssl-keyfile ../ssl/&lt;YOUR-DOMAIN&gt;-key.pem --ssl-certfile ../ssl/&lt;YOUR-DOMAIN&gt;-chain.pem</arguments>
+  <arguments>-m uvicorn backend.main:app --host 0.0.0.0 --port 9989 --ssl-keyfile ../ssl/&lt;YOUR-DOMAIN&gt;-key.pem --ssl-certfile ../ssl/&lt;YOUR-DOMAIN&gt;-chain.pem</arguments>
   <workingdirectory>%BASE%</workingdirectory>
 
   <!-- Default PYMU_OCR_THREADS = 70% of cores. Uncomment to pin. -->

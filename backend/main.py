@@ -21,6 +21,7 @@ import os
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse, Response
@@ -69,6 +70,40 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="PyMu PDF Converter", lifespan=lifespan)
+
+# Embed guard: this service is meant to be loaded as an iframe from the blog.
+# Direct access and embeds from other origins are rejected.
+_BLOG_HOST = "infra-oldman.tistory.com"
+_ALLOWED_HOSTS = frozenset({_BLOG_HOST, "hangsil.myvnc.com"})
+_CSP_FRAME_ANCESTORS = f"frame-ancestors https://{_BLOG_HOST}"
+
+
+def _host_allowed(url_value: str) -> bool:
+    if not url_value:
+        return False
+    try:
+        parsed = urlparse(url_value)
+    except ValueError:
+        return False
+    return parsed.scheme in ("http", "https") and parsed.hostname in _ALLOWED_HOSTS
+
+
+@app.middleware("http")
+async def _embed_guard(request: Request, call_next):
+    # /api/health stays open for uptime monitors.
+    if request.url.path == "/api/health":
+        return await call_next(request)
+
+    origin = request.headers.get("origin", "")
+    referer = request.headers.get("referer", "")
+    if not (_host_allowed(origin) or _host_allowed(referer)):
+        return Response("forbidden", status_code=403)
+
+    response = await call_next(request)
+    if "text/html" in response.headers.get("content-type", ""):
+        response.headers["Content-Security-Policy"] = _CSP_FRAME_ANCESTORS
+    return response
+
 
 ALLOWED_ROTATIONS = {0, 90, 180, 270}
 MAX_TOTAL_BYTES = 200 * 1024 * 1024  # 200 MB total per request

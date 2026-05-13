@@ -1,6 +1,6 @@
 # PowerShell Script for Running PyMu (FastAPI + PaddleOCR) - PRODUCTION
-# Binds HTTPS on 443. Port 443 is privileged; run this script as Administrator
-# (or run via the Windows service which is already LOCAL SYSTEM).
+# Binds HTTPS on 9989. Production normally runs via the Windows service
+# (LOCAL SYSTEM); this script is for manual / dev-on-prod-machine launches.
 
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $scriptPath
@@ -26,8 +26,8 @@ if (-not $sslKey -or -not $sslCert) {
     exit 1
 }
 
-# Free port 443 if occupied
-$port = 443
+# Free port 9989 if occupied
+$port = 9989
 $process = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -First 1
 if ($process) {
     Write-Host "! Port $port is in use by PID $process. Terminating..." -ForegroundColor Cyan

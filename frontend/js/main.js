@@ -100,21 +100,6 @@
     }
   }
 
-  // ─── Source-code link (AGPL §13) ────────────────
-  fetch("/api/info").then((r) => r.json()).then((info) => {
-    const a = document.getElementById("footer-source-link");
-    if (!a) return;
-    if (info.source_url) {
-      a.href = info.source_url;
-      a.textContent = "Source code";
-    } else {
-      a.removeAttribute("href");
-      a.textContent = "Source code (URL not configured)";
-      a.style.cursor = "not-allowed";
-      a.style.opacity = "0.6";
-    }
-  }).catch(() => { /* non-fatal */ });
-
   // ─── 변환 탭: 드롭존 + 파일 목록 ─────────────────
   const dz = document.getElementById("dropzone");
   const fileInput = document.getElementById("file-input");
