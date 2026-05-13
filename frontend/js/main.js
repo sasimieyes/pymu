@@ -383,17 +383,12 @@
       ev.preventDefault();
       console.log("[pymu] download clicked:", absoluteUrl);
 
-      // Best effort: try top-level navigation first for non-sandboxed
-      // embeds. Falls through to postMessage on SecurityError.
-      try {
-        if (window.top && window.top !== window) {
-          window.top.location.href = absoluteUrl;
-          return;
-        }
-      } catch (_) {
-        // Sandboxed — fall through to postMessage.
-      }
-
+      // When embedded, always go through postMessage. Trying
+      // window.top.location.href first would trigger a noisy Chrome
+      // SecurityError warning every time on sandboxed embeds (Tistory).
+      // The parent (top frame) is responsible for navigating itself —
+      // the server's Content-Disposition: attachment turns that
+      // navigation into a download while the page stays put.
       if (window.parent && window.parent !== window) {
         try {
           window.parent.postMessage(
@@ -406,7 +401,7 @@
         }
       }
 
-      // Last resort (not embedded, or postMessage threw): self-navigate.
+      // Not embedded (or postMessage threw): self-navigate.
       window.location.href = absoluteUrl;
     });
 
