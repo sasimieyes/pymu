@@ -355,9 +355,20 @@
     msg.textContent = "완료. 아래 버튼을 눌러 다운로드하세요. ";
     el.appendChild(msg);
 
+    // Resolve to an absolute URL so target="_top" works correctly from
+    // inside a cross-origin iframe — the top frame would otherwise try to
+    // resolve a relative path against the parent (blog) origin.
+    const absoluteUrl = new URL(downloadUrl, window.location.origin).toString();
+
     const a = document.createElement("a");
-    a.href = downloadUrl;
+    a.href = absoluteUrl;
     a.download = filename;
+    // Navigate the top frame so the server's Content-Disposition response
+    // becomes a top-level download instead of an iframe navigation. Some
+    // browsers silently block downloads triggered inside a cross-origin
+    // iframe even when the target URL is same-origin to the iframe.
+    a.target = "_top";
+    a.rel = "noopener";
     a.className = "primary download-link";
     a.textContent = `⬇ ${filename}`;
     el.appendChild(a);

@@ -105,6 +105,12 @@ async def _embed_guard(request: Request, call_next):
     response = await call_next(request)
     if "text/html" in response.headers.get("content-type", ""):
         response.headers["Content-Security-Policy"] = _CSP_FRAME_ANCESTORS
+    # Force browser revalidation for HTML/JS/CSS so frontend changes show up
+    # immediately. The browser still gets 304 when nothing changed (cheap),
+    # but never serves a stale cached copy without checking with the server.
+    ct = response.headers.get("content-type", "")
+    if any(t in ct for t in ("text/html", "javascript", "text/css")):
+        response.headers["Cache-Control"] = "no-cache"
     return response
 
 
