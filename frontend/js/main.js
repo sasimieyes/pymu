@@ -369,30 +369,44 @@
     a.className = "primary download-link";
     a.textContent = `⬇ ${filename}`;
 
-    // Chrome blocks downloads initiated inside a cross-origin iframe
-    // even when the URL is same-origin to the iframe (response arrives
-    // but is silently discarded — no save dialog). Bouncing through
-    // the parent via postMessage doesn't help either, because user
-    // activation doesn't propagate across postMessage so the parent's
-    // programmatic click is treated as automated.
-    //
-    // Fix: from inside the click handler (which holds user activation)
-    // navigate the *top* frame directly. Cross-origin iframes are
-    // permitted to write window.top.location with active user
-    // activation. The server's Content-Disposition: attachment turns
-    // the top-level navigation into a download while the blog page
-    // stays put.
+    // Downloading from inside the iframe is blocked by two layers:
+    //   1. Chrome's cross-origin iframe download policy (silent drop).
+    //   2. Tistory wraps embedded iframes in a sandbox without
+    //      allow-top-navigation, so writing window.top.location throws
+    //      a SecurityError.
+    // Path that works: postMessage the URL up to the parent (blog),
+    // which is the top frame and unsandboxed. The parent navigates
+    // itself with window.location.href; the server's
+    // Content-Disposition: attachment intercepts the navigation as a
+    // download, so the blog page itself stays put.
     a.addEventListener("click", function (ev) {
       ev.preventDefault();
-      console.log("[pymu] download clicked, navigating top to:", absoluteUrl);
+      console.log("[pymu] download clicked:", absoluteUrl);
+
+      // Best effort: try top-level navigation first for non-sandboxed
+      // embeds. Falls through to postMessage on SecurityError.
       try {
         if (window.top && window.top !== window) {
           window.top.location.href = absoluteUrl;
           return;
         }
-      } catch (err) {
-        console.warn("[pymu] top navigation failed:", err);
+      } catch (_) {
+        // Sandboxed — fall through to postMessage.
       }
+
+      if (window.parent && window.parent !== window) {
+        try {
+          window.parent.postMessage(
+            { type: "pymu:download", url: absoluteUrl, filename: filename },
+            "*"
+          );
+          return;
+        } catch (err) {
+          console.warn("[pymu] postMessage failed:", err);
+        }
+      }
+
+      // Last resort (not embedded, or postMessage threw): self-navigate.
       window.location.href = absoluteUrl;
     });
 
