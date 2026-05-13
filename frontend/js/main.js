@@ -10,6 +10,18 @@
     nextId: 1,
   };
 
+  // Object URL for the most recent download, kept alive until the user
+  // clicks the link or starts another conversion. Cross-origin iframes
+  // can't trigger downloads programmatically once user activation has
+  // expired, so the link must be clicked by the user themselves.
+  let _pendingDownloadUrl = null;
+  function clearPendingDownload() {
+    if (_pendingDownloadUrl) {
+      URL.revokeObjectURL(_pendingDownloadUrl);
+      _pendingDownloadUrl = null;
+    }
+  }
+
   // ── PDF.js (썸네일 렌더링용) ──────────────────────────
   // ESM 빌드를 동적 import 해서 worker 까지 자동 셋업.
   // 실패 시 PDF 썸네일은 generic 아이콘으로 떨어짐.
@@ -244,6 +256,7 @@
     fd.append("ocr_enabled", ocrToggle.checked ? "true" : "false");
     fd.append("llm_enhance", (ocrToggle.checked && llmToggle.checked) ? "true" : "false");
 
+    clearPendingDownload();
     setStatusProgress(0, "시작 중…");
     convertBtn.disabled = true;
     try {
@@ -288,8 +301,7 @@
       const mime = donePayload.mime || "application/pdf";
       const fallback = mime === "application/zip" ? "converted.zip" : "merged.pdf";
       const blob = base64ToBlob(donePayload.data, mime);
-      await downloadBlob(blob, donePayload.filename || fallback);
-      setStatus("완료. 다운로드가 시작됩니다.", "ok");
+      showDownloadReady(blob, donePayload.filename || fallback);
     } catch (err) {
       setStatus(`실패: ${err.message || err}`, "error");
     } finally {
@@ -356,14 +368,25 @@
     }[c]));
   }
 
-  async function downloadBlob(blob, filename) {
+  function showDownloadReady(blob, filename) {
+    clearPendingDownload();
     const url = URL.createObjectURL(blob);
+    _pendingDownloadUrl = url;
+
+    const el = document.getElementById("status");
+    el.className = "status ok";
+    el.innerHTML = "";
+
+    const msg = document.createElement("span");
+    msg.className = "status-text";
+    msg.textContent = "완료. 아래 버튼을 눌러 다운로드하세요. ";
+    el.appendChild(msg);
+
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    a.className = "primary download-link";
+    a.textContent = `⬇ ${filename}`;
+    el.appendChild(a);
   }
 })();

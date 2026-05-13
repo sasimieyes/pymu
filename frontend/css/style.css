@@ -200,6 +200,13 @@ main {
 .primary:hover:not(:disabled) { background: var(--accent-hover); }
 .primary:disabled { opacity: .5; cursor: not-allowed; }
 
+a.download-link {
+  display: inline-block;
+  text-decoration: none;
+  margin-left: 8px;
+}
+a.download-link:hover { text-decoration: none; }
+
 .filename {
   margin: 12px 0 0;
   font-size: 14px;
