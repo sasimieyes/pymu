@@ -226,12 +226,11 @@ def _check_cancelled(job: Job) -> None:
 
 
 def _process_convert(job: Job) -> None:
-    import base64
     import io
     import zipfile
     from pathlib import Path
 
-    from backend.services import converter, ocr, office, spacing
+    from backend.services import converter, ocr, office, results, spacing
 
     items = job.payload["items"]
     ocr_enabled = bool(job.payload.get("ocr_enabled", True))
@@ -274,7 +273,7 @@ def _process_convert(job: Job) -> None:
         hi = pre_lo + (main_hi - pre_lo) * (idx + 1) / n_groups
         return int(lo), int(hi)
 
-    results: list[tuple[str, bytes]] = []
+    pdf_outputs: list[tuple[str, bytes]] = []
     used_llm = False
 
     for idx, (suggested_name, group_items) in enumerate(groups):
@@ -320,7 +319,7 @@ def _process_convert(job: Job) -> None:
             if llm_enhance:
                 used_llm = True
 
-        results.append((suggested_name, pdf_bytes))
+        pdf_outputs.append((suggested_name, pdf_bytes))
 
     if used_llm:
         try:
@@ -331,11 +330,10 @@ def _process_convert(job: Job) -> None:
     _check_cancelled(job)
     emit_progress(96, "PDF 직렬화…")
 
-    if len(results) == 1:
-        filename, pdf_bytes = results[0]
-        payload_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+    if len(pdf_outputs) == 1:
+        filename, pdf_bytes = pdf_outputs[0]
+        out_bytes = pdf_bytes
         mime = "application/pdf"
-        # 페이지 수 — pdf_bytes 열어 확인.
         try:
             import fitz as _fitz
             with _fitz.open(stream=pdf_bytes, filetype="pdf") as _d:
@@ -350,7 +348,7 @@ def _process_convert(job: Job) -> None:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             seen: dict[str, int] = {}
-            for fn, pdf in results:
+            for fn, pdf in pdf_outputs:
                 # 동일 이름 충돌 방지 (e.g., 두 단독 그룹이 같은 stem)
                 base = fn
                 if base in seen:
@@ -360,35 +358,33 @@ def _process_convert(job: Job) -> None:
                 else:
                     seen[base] = 1
                 zf.writestr(base, pdf)
-        zip_bytes = buf.getvalue()
+        out_bytes = buf.getvalue()
         filename = "converted.zip"
-        payload_b64 = base64.b64encode(zip_bytes).decode("ascii")
         mime = "application/zip"
-        # 모든 그룹의 페이지 합산.
         try:
             import fitz as _fitz
             total_pages = 0
-            for _fn, _pdf in results:
+            for _fn, _pdf in pdf_outputs:
                 with _fitz.open(stream=_pdf, filetype="pdf") as _d:
                     total_pages += len(_d)
         except Exception:
             total_pages = 0
         job.payload["_metrics"] = {
-            "pages": total_pages, "out_bytes": len(zip_bytes), "mime": mime,
+            "pages": total_pages, "out_bytes": len(out_bytes), "mime": mime,
         }
 
+    token = results.put(out_bytes, mime, filename)
     job.events.put({"type": "progress", "percent": 100, "label": "완료"})
     job.events.put({
         "type": "done",
         "filename": filename,
-        "data": payload_b64,
+        "download_url": f"/api/result/{token}",
         "mime": mime,
     })
 
 
 def _process_ocr(job: Job) -> None:
-    import base64
-    from backend.services import ocr, spacing
+    from backend.services import ocr, results, spacing
 
     pdf_bytes = job.payload["pdf_bytes"]
     filename = job.payload.get("filename", "ocr.pdf")
@@ -428,7 +424,6 @@ def _process_ocr(job: Job) -> None:
 
     _check_cancelled(job)
     emit_progress(96, "PDF 직렬화…")
-    payload_b64 = base64.b64encode(pdf_bytes).decode("ascii")
     try:
         import fitz as _fitz
         with _fitz.open(stream=pdf_bytes, filetype="pdf") as _d:
@@ -438,8 +433,11 @@ def _process_ocr(job: Job) -> None:
     job.payload["_metrics"] = {
         "pages": _pages, "out_bytes": len(pdf_bytes), "mime": "application/pdf",
     }
+    token = results.put(pdf_bytes, "application/pdf", filename)
     job.events.put({"type": "progress", "percent": 100, "label": "완료"})
     job.events.put({
-        "type": "done", "filename": filename, "data": payload_b64,
+        "type": "done",
+        "filename": filename,
+        "download_url": f"/api/result/{token}",
         "mime": "application/pdf",
     })

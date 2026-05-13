@@ -10,18 +10,6 @@
     nextId: 1,
   };
 
-  // Object URL for the most recent download, kept alive until the user
-  // clicks the link or starts another conversion. Cross-origin iframes
-  // can't trigger downloads programmatically once user activation has
-  // expired, so the link must be clicked by the user themselves.
-  let _pendingDownloadUrl = null;
-  function clearPendingDownload() {
-    if (_pendingDownloadUrl) {
-      URL.revokeObjectURL(_pendingDownloadUrl);
-      _pendingDownloadUrl = null;
-    }
-  }
-
   // ── PDF.js (썸네일 렌더링용) ──────────────────────────
   // ESM 빌드를 동적 import 해서 worker 까지 자동 셋업.
   // 실패 시 PDF 썸네일은 generic 아이콘으로 떨어짐.
@@ -256,7 +244,6 @@
     fd.append("ocr_enabled", ocrToggle.checked ? "true" : "false");
     fd.append("llm_enhance", (ocrToggle.checked && llmToggle.checked) ? "true" : "false");
 
-    clearPendingDownload();
     setStatusProgress(0, "시작 중…");
     convertBtn.disabled = true;
     try {
@@ -298,10 +285,8 @@
       }
       if (lastError) throw new Error(lastError);
       if (!donePayload) throw new Error("응답이 끊김");
-      const mime = donePayload.mime || "application/pdf";
-      const fallback = mime === "application/zip" ? "converted.zip" : "merged.pdf";
-      const blob = base64ToBlob(donePayload.data, mime);
-      showDownloadReady(blob, donePayload.filename || fallback);
+      const fallback = donePayload.mime === "application/zip" ? "converted.zip" : "merged.pdf";
+      showDownloadReady(donePayload.download_url, donePayload.filename || fallback);
     } catch (err) {
       setStatus(`실패: ${err.message || err}`, "error");
     } finally {
@@ -335,14 +320,6 @@
       : (pct + "%");
   }
 
-  function base64ToBlob(b64, mime) {
-    const bin = atob(b64);
-    const len = bin.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  }
-
   // 큐 대기 중 상태 — 인디터미닛 슬라이드 + "대기 중 (N번째)" 라벨.
   function setStatusQueued(position, ahead) {
     const el = document.getElementById("status");
@@ -368,11 +345,7 @@
     }[c]));
   }
 
-  function showDownloadReady(blob, filename) {
-    clearPendingDownload();
-    const url = URL.createObjectURL(blob);
-    _pendingDownloadUrl = url;
-
+  function showDownloadReady(downloadUrl, filename) {
     const el = document.getElementById("status");
     el.className = "status ok";
     el.innerHTML = "";
@@ -383,7 +356,7 @@
     el.appendChild(msg);
 
     const a = document.createElement("a");
-    a.href = url;
+    a.href = downloadUrl;
     a.download = filename;
     a.className = "primary download-link";
     a.textContent = `⬇ ${filename}`;

@@ -27,7 +27,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from backend.services import converter, job_queue, ocr, spacing
+from backend.services import converter, job_queue, ocr, results, spacing
 
 # Make our `pymu.*` loggers visible under uvicorn (which doesn't auto-attach
 # a handler to user loggers).
@@ -90,8 +90,11 @@ def _host_allowed(url_value: str) -> bool:
 
 @app.middleware("http")
 async def _embed_guard(request: Request, call_next):
+    path = request.url.path
     # /api/health stays open for uptime monitors.
-    if request.url.path == "/api/health":
+    # /api/result/* is gated by an unguessable token already; let it through
+    # so users opening the download in a new tab (no referer) still work.
+    if path == "/api/health" or path.startswith("/api/result/"):
         return await call_next(request)
 
     origin = request.headers.get("origin", "")
@@ -258,6 +261,30 @@ def info():
         "license": "AGPL-3.0",
         "source_url": os.environ.get("PYMU_SOURCE_URL", ""),
     }
+
+
+@app.get("/api/result/{token}")
+def fetch_result(token: str):
+    """Return a converted file by its one-time token.
+
+    Tokens expire after results.RESULT_TTL_SECONDS; trying to fetch a
+    missing or expired token returns 404.
+    """
+    from urllib.parse import quote
+    entry = results.get(token)
+    if entry is None:
+        raise HTTPException(404, "result not found or expired")
+    ascii_name = entry.filename.encode("ascii", errors="replace").decode("ascii").replace('"', "")
+    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(entry.filename)}"
+    return Response(
+        content=entry.data,
+        media_type=entry.mime,
+        headers={
+            "Content-Disposition": disposition,
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 # Mount the frontend last so /api/* takes precedence.
