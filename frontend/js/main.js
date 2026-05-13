@@ -355,22 +355,33 @@
     msg.textContent = "완료. 아래 버튼을 눌러 다운로드하세요. ";
     el.appendChild(msg);
 
-    // Resolve to an absolute URL so target="_top" works correctly from
-    // inside a cross-origin iframe — the top frame would otherwise try to
-    // resolve a relative path against the parent (blog) origin.
     const absoluteUrl = new URL(downloadUrl, window.location.origin).toString();
+    console.log("[pymu] download ready:", absoluteUrl, filename);
 
     const a = document.createElement("a");
     a.href = absoluteUrl;
     a.download = filename;
-    // Navigate the top frame so the server's Content-Disposition response
-    // becomes a top-level download instead of an iframe navigation. Some
-    // browsers silently block downloads triggered inside a cross-origin
-    // iframe even when the target URL is same-origin to the iframe.
+    // Top-frame navigation is the fallback if the explicit click handler
+    // below doesn't run for some reason. Server's Content-Disposition
+    // turns the navigation into a download regardless of target.
     a.target = "_top";
     a.rel = "noopener";
     a.className = "primary download-link";
     a.textContent = `⬇ ${filename}`;
+
+    // Belt-and-suspenders: some browsers silently swallow the default
+    // anchor click inside a cross-origin iframe (no error, no request).
+    // Force the navigation explicitly from inside a click handler — a
+    // click is a fresh user activation that all browsers respect.
+    a.addEventListener("click", function (ev) {
+      console.log("[pymu] download clicked, navigating to:", absoluteUrl);
+      ev.preventDefault();
+      // Navigate the iframe itself. The server replies with
+      // Content-Disposition: attachment so the navigation becomes a
+      // download and the iframe content stays put.
+      window.location.href = absoluteUrl;
+    });
+
     el.appendChild(a);
   }
 })();
