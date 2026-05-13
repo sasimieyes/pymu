@@ -200,10 +200,21 @@ main {
 .primary:hover:not(:disabled) { background: var(--accent-hover); }
 .primary:disabled { opacity: .5; cursor: not-allowed; }
 
+.status.ok {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.status.ok .status-text { display: block; }
+
 a.download-link {
-  display: inline-block;
+  display: block;
+  text-align: center;
   text-decoration: none;
-  margin-left: 8px;
+  padding: 12px 20px;
+  font-size: 15px;
+  box-sizing: border-box;
 }
 a.download-link:hover { text-decoration: none; }
 

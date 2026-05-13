@@ -352,7 +352,7 @@
 
     const msg = document.createElement("span");
     msg.className = "status-text";
-    msg.textContent = "완료. 아래 버튼을 눌러 다운로드하세요. ";
+    msg.textContent = "변환 완료";
     el.appendChild(msg);
 
     const absoluteUrl = new URL(downloadUrl, window.location.origin).toString();
