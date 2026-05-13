@@ -369,17 +369,30 @@
     a.className = "primary download-link";
     a.textContent = `⬇ ${filename}`;
 
-    // Belt-and-suspenders: some browsers silently swallow the default
-    // anchor click inside a cross-origin iframe (no error, no request).
-    // Force the navigation explicitly from inside a click handler — a
-    // click is a fresh user activation that all browsers respect.
+    // Chrome silently drops downloads initiated from a cross-origin
+    // iframe even when the URL is same-origin to the iframe (it sends
+    // the request, receives the file, then discards it instead of
+    // showing a save dialog). Bounce the request to the parent (top)
+    // frame via postMessage — the parent triggers the navigation, and
+    // the server's Content-Disposition: attachment turns it into a
+    // top-level download while the blog page stays put.
     a.addEventListener("click", function (ev) {
-      console.log("[pymu] download clicked, navigating to:", absoluteUrl);
       ev.preventDefault();
-      // Navigate the iframe itself. The server replies with
-      // Content-Disposition: attachment so the navigation becomes a
-      // download and the iframe content stays put.
-      window.location.href = absoluteUrl;
+      console.log("[pymu] download clicked, asking parent to download:", absoluteUrl);
+      if (window.parent === window) {
+        // Not embedded — just navigate ourselves.
+        window.location.href = absoluteUrl;
+        return;
+      }
+      try {
+        window.parent.postMessage(
+          { type: "pymu:download", url: absoluteUrl, filename: filename },
+          "*"
+        );
+      } catch (e) {
+        console.warn("[pymu] postMessage failed, falling back:", e);
+        window.location.href = absoluteUrl;
+      }
     });
 
     el.appendChild(a);
