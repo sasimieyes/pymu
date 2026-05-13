@@ -52,5 +52,26 @@
   </main>
 
   <script src="/js/main.js"></script>
+  <script>
+    // Auto-resize: report body height to the parent (the blog) so the iframe
+    // grows/shrinks with the content. No-op when not embedded.
+    (function () {
+      if (window.parent === window) return;
+      var PARENT_ORIGIN = "https://infra-oldman.tistory.com";
+      function postHeight() {
+        var h = Math.max(
+          document.documentElement.scrollHeight,
+          document.body.scrollHeight
+        );
+        window.parent.postMessage(
+          { type: "pymu:resize", height: h },
+          PARENT_ORIGIN
+        );
+      }
+      try { new ResizeObserver(postHeight).observe(document.body); } catch (_) {}
+      window.addEventListener("load", postHeight);
+      postHeight();
+    })();
+  </script>
 </body>
 </html>
