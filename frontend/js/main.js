@@ -369,30 +369,31 @@
     a.className = "primary download-link";
     a.textContent = `⬇ ${filename}`;
 
-    // Chrome silently drops downloads initiated from a cross-origin
-    // iframe even when the URL is same-origin to the iframe (it sends
-    // the request, receives the file, then discards it instead of
-    // showing a save dialog). Bounce the request to the parent (top)
-    // frame via postMessage — the parent triggers the navigation, and
-    // the server's Content-Disposition: attachment turns it into a
-    // top-level download while the blog page stays put.
+    // Chrome blocks downloads initiated inside a cross-origin iframe
+    // even when the URL is same-origin to the iframe (response arrives
+    // but is silently discarded — no save dialog). Bouncing through
+    // the parent via postMessage doesn't help either, because user
+    // activation doesn't propagate across postMessage so the parent's
+    // programmatic click is treated as automated.
+    //
+    // Fix: from inside the click handler (which holds user activation)
+    // navigate the *top* frame directly. Cross-origin iframes are
+    // permitted to write window.top.location with active user
+    // activation. The server's Content-Disposition: attachment turns
+    // the top-level navigation into a download while the blog page
+    // stays put.
     a.addEventListener("click", function (ev) {
       ev.preventDefault();
-      console.log("[pymu] download clicked, asking parent to download:", absoluteUrl);
-      if (window.parent === window) {
-        // Not embedded — just navigate ourselves.
-        window.location.href = absoluteUrl;
-        return;
-      }
+      console.log("[pymu] download clicked, navigating top to:", absoluteUrl);
       try {
-        window.parent.postMessage(
-          { type: "pymu:download", url: absoluteUrl, filename: filename },
-          "*"
-        );
-      } catch (e) {
-        console.warn("[pymu] postMessage failed, falling back:", e);
-        window.location.href = absoluteUrl;
+        if (window.top && window.top !== window) {
+          window.top.location.href = absoluteUrl;
+          return;
+        }
+      } catch (err) {
+        console.warn("[pymu] top navigation failed:", err);
       }
+      window.location.href = absoluteUrl;
     });
 
     el.appendChild(a);
